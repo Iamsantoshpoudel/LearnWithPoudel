@@ -1,90 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Home page | LearnWithpoudel</title>
-  <!-- fonts -->
-  <link rel="stylesheet" href="./webpage/css/index.css" />
-  <style>
-    /* change */
-  </style>
+  <title>P2P Call - PoudelX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
-
-<body>
-  <!-- header  -->
-  <header class="myheader">
-    <nav class="navbar">
-      <a href="#" class="logo_" id="main-logo"><img src="./webpage/main-logo.svg" alt="mylogo" id="logomain" /></a>
-      <ul>
-        <li><a href="./index.html">Home</a></li>
-        <li><a href="./contact.html">Cantact</a></li>
-        <li><a href="#">About</a></li>
-        <li><a href="#">Community</a></li>
-        <i class="fi fi-brands-github" </i>
-      </ul>
-      <div class="navbuttons">
-        <button class="button">Get started</button>
-      </div>
-    </nav>
-  </header>
-  <section>
-    <div class="first-intro">
-      <div class="detail">
-        <h3 id="top-detail">Explore about me the content
-          <h1 style="color: #00e8f8; padding:12px;">About me </h1>
-          <p class="about-words">
-            Lorem Ipsum is simply dummy text of the printing
-            and typesetting industry.
-          </p>
-        </h3>
-      </div>
-      <section class="main">
-        <div class="leftside">
-          <div class="main-content">
-            <h1 style="color: orange; font-size: 2rem; padding: 8px;">Santosh poudel</h1>
-            <h1 class="intro-first">Unleast Your Creativity with Top <span class="text-1" style="color: #76CFFA;">Design
-                Course</span></h1>
-          </div>
-
-        </div>
+<body class="bg-gray-100 p-4">
+  <div class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-lg space-y-4">
+    <h1 class="text-2xl font-bold text-center">PoudelX Video Call</h1>
+    
+    <div>
+      <label class="block font-medium mb-1">Your Peer ID:</label>
+      <input id="my-peer-id" type="text" class="w-full px-4 py-2 border rounded" readonly />
     </div>
 
-    <footer>
-      <div class="footer">
-        <div class="footer-container" style="margin-bottom: 0;">
-          <div class="first-column">
-            <h2> About Us</h2>
-            <div class="footer-para">
+    <div>
+      <label class="block font-medium mb-1">Call Peer ID:</label>
+      <input id="remote-peer-id" type="text" class="w-full px-4 py-2 border rounded" placeholder="Enter friend's ID" />
+      <button onclick="callPeer()" class="w-full mt-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+        Call
+      </button>
+    </div>
 
-              <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Fugit, omnis voluptate. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aut maxime animi at.</p>
-            </div>
-          </div>
-          <div class="second-column">
-            <h2> Get in touch</h2>
-            <div class="footer-para">
+    <div class="grid grid-cols-2 gap-2 mt-4">
+      <video id="my-video" autoplay muted class="w-full h-40 bg-black rounded"></video>
+      <video id="remote-video" autoplay class="w-full h-40 bg-black rounded"></video>
+    </div>
+  </div>
 
-              <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Fugit, omnis voluptate Lorem, ipsum dolor sit amet consectetur adipisicing elit. Incidunt sequi, illum, hic omnis veniam earum deserunt, distinctio enim at corrupti fuga est.</p>
-            </div>
-          </div>
-          <div class="third-column">
-            <h2>Pages</h2>
-            <div class="footer-para">
+  <script>
 
-              <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Fugit, omnis voluptate. Lorem ipsum dolor sit amet consectetur adipisicing elit. Nostrum ullam rem illo, pariatur sed enim similique hic excepturi accusamus praesentium ipsum quos!</p>
-            </div>
-          </div>
-        </div>
-        <div class="copyright">
-          <div class="copyright-names">
-            <hr style="width: 100%;">
-            <h1>Copyright 2022. All rights reserved Developed by poudel❤️</h1>
-          </div>
-        </div>
-      </div>
-    </footer>
-  </section>
+const myVideo = document.getElementById('my-video');
+const remoteVideo = document.getElementById('remote-video');
+const myPeerIdInput = document.getElementById('my-peer-id');
+
+let myPeerId = localStorage.getItem('poudelx-peer-id');
+if (!myPeerId) {
+  myPeerId = 'user-' + Math.floor(Math.random() * 100000);
+  localStorage.setItem('poudelx-peer-id', myPeerId);
+}
+myPeerIdInput.value = myPeerId;
+
+// Create PeerJS instance
+const peer = new Peer(myPeerId);
+
+navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+  myVideo.srcObject = stream;
+
+  peer.on('call', call => {
+    call.answer(stream);
+    call.on('stream', remoteStream => {
+      remoteVideo.srcObject = remoteStream;
+    });
+  });
+}).catch(err => {
+  alert('Error accessing camera/mic: ' + err.message);
+});
+
+function callPeer() {
+  const remoteId = document.getElementById('remote-peer-id').value;
+  if (!remoteId) return alert('Enter a peer ID to call');
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+    const call = peer.call(remoteId, stream);
+    call.on('stream', remoteStream => {
+      remoteVideo.srcObject = remoteStream;
+    });
+  });
+}
+</script>
 </body>
-
 </html>
