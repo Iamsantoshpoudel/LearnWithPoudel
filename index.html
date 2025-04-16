@@ -31,14 +31,16 @@
   </div>
 
   <script>
+import { nanoid } from 'nanoid';
 
+const myPeerId = 'user-' + nanoid(6); 
 const myVideo = document.getElementById('my-video');
 const remoteVideo = document.getElementById('remote-video');
 const myPeerIdInput = document.getElementById('my-peer-id');
 
 let myPeerId = localStorage.getItem('poudelx-peer-id');
 if (!myPeerId) {
-  myPeerId = 'user-' + Math.floor(Math.random() * 100000);
+  const myPeerId = 'user-' + nanoid(6); 
   localStorage.setItem('poudelx-peer-id', myPeerId);
 }
 myPeerIdInput.value = myPeerId;
