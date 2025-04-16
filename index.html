@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>P2P Call - PoudelX</title>
+  <title>PoudelX - P2P Call</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
   <div class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-lg space-y-4">
     <h1 class="text-2xl font-bold text-center">PoudelX Video Call</h1>
-    
+
     <div>
       <label class="block font-medium mb-1">Your Peer ID:</label>
       <input id="my-peer-id" type="text" class="w-full px-4 py-2 border rounded bg-gray-100" readonly />
@@ -19,7 +19,7 @@
     <div>
       <label class="block font-medium mb-1">Call Peer ID:</label>
       <input id="remote-peer-id" type="text" class="w-full px-4 py-2 border rounded" placeholder="Enter friend's ID" />
-      <button onclick="callPeer()" class="w-full mt-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+      <button onclick="startCall()" class="w-full mt-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
         Call
       </button>
     </div>
@@ -28,10 +28,19 @@
       <video id="my-video" autoplay muted class="w-full h-40 bg-black rounded"></video>
       <video id="remote-video" autoplay class="w-full h-40 bg-black rounded"></video>
     </div>
+
+    <div class="flex justify-between mt-4 space-x-2">
+      <button id="mute-btn" onclick="toggleMute()" class="flex-1 bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600">
+        Mute
+      </button>
+      <button id="end-call-btn" onclick="endCall()" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">
+        End Call
+      </button>
+    </div>
   </div>
 
   <script>
-    // Simple readable ID generator
+    // ID generator
     function generateId(length = 6) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let id = '';
@@ -45,6 +54,10 @@
     const remoteVideo = document.getElementById('remote-video');
     const myPeerIdInput = document.getElementById('my-peer-id');
 
+    let localStream = null;
+    let currentCall = null;
+    let isMuted = false;
+
     let myPeerId = localStorage.getItem('poudelx-peer-id');
     if (!myPeerId) {
       myPeerId = 'user-' + generateId(6);
@@ -52,39 +65,85 @@
     }
     myPeerIdInput.value = myPeerId;
 
-    // Create PeerJS instance
     const peer = new Peer(myPeerId);
 
     peer.on('open', () => {
-      console.log('Connected as:', myPeerId);
+      console.log('PeerJS connected as', myPeerId);
     });
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      myVideo.srcObject = stream;
+    peer.on('call', async call => {
+      console.log('Incoming call from', call.peer);
+      const permissionStream = await requestMedia();
+      if (!permissionStream) return;
 
-      // Handle incoming call
-      peer.on('call', call => {
-        call.answer(stream);
-        call.on('stream', remoteStream => {
-          remoteVideo.srcObject = remoteStream;
-        });
+      localStream = permissionStream;
+      myVideo.srcObject = localStream;
+
+      call.answer(localStream);
+      currentCall = call;
+
+      call.on('stream', remoteStream => {
+        remoteVideo.srcObject = remoteStream;
       });
-    }).catch(err => {
-      alert('Error accessing camera/mic: ' + err.message);
+
+      call.on('close', () => {
+        cleanup();
+      });
     });
 
-    function callPeer() {
+    async function startCall() {
       const remoteId = document.getElementById('remote-peer-id').value.trim();
       if (!remoteId) return alert('Enter a peer ID to call');
 
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-        const call = peer.call(remoteId, stream);
-        call.on('stream', remoteStream => {
-          remoteVideo.srcObject = remoteStream;
-        });
-      }).catch(err => {
-        alert('Error starting the call: ' + err.message);
+      const stream = await requestMedia();
+      if (!stream) return;
+
+      localStream = stream;
+      myVideo.srcObject = stream;
+
+      const call = peer.call(remoteId, localStream);
+      currentCall = call;
+
+      call.on('stream', remoteStream => {
+        remoteVideo.srcObject = remoteStream;
       });
+
+      call.on('close', () => {
+        cleanup();
+      });
+    }
+
+    function toggleMute() {
+      if (!localStream) return;
+      isMuted = !isMuted;
+      localStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+      document.getElementById('mute-btn').textContent = isMuted ? 'Unmute' : 'Mute';
+    }
+
+    function endCall() {
+      if (currentCall) {
+        currentCall.close();
+        currentCall = null;
+      }
+      cleanup();
+    }
+
+    function cleanup() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      myVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+    }
+
+    async function requestMedia() {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (err) {
+        alert('Permission denied or error accessing media devices: ' + err.message);
+        return null;
+      }
     }
   </script>
 </body>
