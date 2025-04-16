@@ -13,7 +13,7 @@
     
     <div>
       <label class="block font-medium mb-1">Your Peer ID:</label>
-      <input id="my-peer-id" type="text" class="w-full px-4 py-2 border rounded" readonly />
+      <input id="my-peer-id" type="text" class="w-full px-4 py-2 border rounded bg-gray-100" readonly />
     </div>
 
     <div>
@@ -31,46 +31,61 @@
   </div>
 
   <script>
-import { nanoid } from 'nanoid';
+    // Simple readable ID generator
+    function generateId(length = 6) {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let id = '';
+      for (let i = 0; i < length; i++) {
+        id += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return id;
+    }
 
-const myPeerId = 'user-' + nanoid(1); 
-const myVideo = document.getElementById('my-video');
-const remoteVideo = document.getElementById('remote-video');
-const myPeerIdInput = document.getElementById('my-peer-id');
+    const myVideo = document.getElementById('my-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const myPeerIdInput = document.getElementById('my-peer-id');
 
-let myPeerId = localStorage.getItem('poudelx-peer-id');
-if (!myPeerId) {
-  const myPeerId = 'user-' + nanoid(6); 
-  localStorage.setItem('poudelx-peer-id', myPeerId);
-}
-myPeerIdInput.value = myPeerId;
+    let myPeerId = localStorage.getItem('poudelx-peer-id');
+    if (!myPeerId) {
+      myPeerId = 'user-' + generateId(6);
+      localStorage.setItem('poudelx-peer-id', myPeerId);
+    }
+    myPeerIdInput.value = myPeerId;
 
-// Create PeerJS instance
-const peer = new Peer(myPeerId);
+    // Create PeerJS instance
+    const peer = new Peer(myPeerId);
 
-navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-  myVideo.srcObject = stream;
-
-  peer.on('call', call => {
-    call.answer(stream);
-    call.on('stream', remoteStream => {
-      remoteVideo.srcObject = remoteStream;
+    peer.on('open', () => {
+      console.log('Connected as:', myPeerId);
     });
-  });
-}).catch(err => {
-  alert('Error accessing camera/mic: ' + err.message);
-});
 
-function callPeer() {
-  const remoteId = document.getElementById('remote-peer-id').value;
-  if (!remoteId) return alert('Enter a peer ID to call');
-  navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-    const call = peer.call(remoteId, stream);
-    call.on('stream', remoteStream => {
-      remoteVideo.srcObject = remoteStream;
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      myVideo.srcObject = stream;
+
+      // Handle incoming call
+      peer.on('call', call => {
+        call.answer(stream);
+        call.on('stream', remoteStream => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      });
+    }).catch(err => {
+      alert('Error accessing camera/mic: ' + err.message);
     });
-  });
-}
-</script>
+
+    function callPeer() {
+      const remoteId = document.getElementById('remote-peer-id').value.trim();
+      if (!remoteId) return alert('Enter a peer ID to call');
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        const call = peer.call(remoteId, stream);
+        call.on('stream', remoteStream => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      }).catch(err => {
+        alert('Error starting the call: ' + err.message);
+      });
+    }
+  </script>
 </body>
 </html>
