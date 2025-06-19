@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Chatbot UI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f2f2f2;
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+      max-width: 100%;
+      margin: auto;
+      border: 1px solid #ccc;
+      background-color: #fff;
+    }
+
+    .chat-header {
+      padding: 15px;
+      background-color: #314c59;
+      color: #fff;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .message {
+      padding: 10px 14px;
+      border-radius: 10px;
+      max-width: 80%;
+      white-space: pre-wrap;
+    }
+
+    .user-message {
+      align-self: flex-end;
+      background-color: #d1e7dd;
+    }
+
+    .bot-message {
+      align-self: flex-start;
+      background-color: #f1f1f1;
+    }
+
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+
+    .chat-input textarea {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      resize: none;
+    }
+  
+    .chat-input button {
+      padding: 0 20px;
+      border: none;
+      background-color: #000000;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 13%;
+    }
+
+    .chat-input button:hover {
+      background-color: #112929;
+    }
+    .container{
+
+      margin: 10px 50px ;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+  <div class="chat-container">
+    <div class="chat-header">
+      Gemini AI Chat
+    </div>
+
+    <div class="chat-messages response " id="chatMessages">
+      <!-- Messages will be injected here -->
+    </div>
+
+    <form class="chat-input" id="chatForm">
+      <textarea id="userInput" placeholder="Type your message..." rows="2"></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  </div>
+
+  <script>
+    const chatMessages = document.getElementById("chatMessages");
+    const chatForm = document.getElementById("chatForm");
+    const userInput = document.getElementById("userInput");
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const prompt = userInput.value.trim();
+      if (!prompt) return;
+
+      // Display user message
+      addMessage(prompt, "user");
+
+      // Show bot thinking
+      addMessage("Thinking...", "bot", "pending");
+
+      try {
+        const formData = new FormData();
+        formData.append("prompt", prompt);
+
+        const res = await fetch("/generate", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        // Remove "Thinking..."
+        const pending = document.querySelector(".bot-message.pending");
+        if (pending) pending.remove();
+
+        if (data.response_html) {
+          addMessage(data.response_html, "bot", null, true);
+        } else {
+          addMessage("❌ Error: " + (data.error || "Unknown"), "bot");
+        }
+      } catch (err) {
+        addMessage("❌ Network error.", "bot");
+      }
+
+      userInput.value = "";
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    function addMessage(text, sender = "bot", extraClass = "", isHtml = false) {
+      const msg = document.createElement("div");
+      msg.className = `message ${sender}-message ${extraClass}`;
+      msg.innerHTML = isHtml ? text : escapeHtml(text);
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br>");
+    }
+  </script>
+
+</body>
+</html>
